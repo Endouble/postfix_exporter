@@ -289,7 +289,7 @@ var (
 	smtpdRejectsLine                    = regexp.MustCompile(`^NOQUEUE: reject: RCPT from \S+: ([0-9]+) `)
 	smtpdLostConnectionLine             = regexp.MustCompile(`^lost connection after (\w+) from `)
 	smtpdSASLAuthenticationFailuresLine = regexp.MustCompile(`^warning: \S+: SASL \S+ authentication failed: `)
-	smtpdTLSLine                        = regexp.MustCompile(`^(\S+) TLS connection established from \S+: (\S+) with cipher (\S+) \((\d+)/(\d+) bits\)$`)
+	smtpdTLSLine                        = regexp.MustCompile(`^(\S+) TLS connection established from \S+: (\S+) with cipher (\S+) \((\d+)/(\d+) bits\)`)
 	opendkimSignatureAdded              = regexp.MustCompile(`^[\w\d]+: DKIM-Signature field added \(s=(\w+), d=(.*)\)$`)
 )
 
@@ -612,6 +612,9 @@ func NewPostfixExporter(showqPath string, logfilePath string, journal *Journal, 
 func (e *PostfixExporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- postfixUpDesc
 
+	if e.tailer == nil {
+		return
+	}
 	ch <- e.cleanupProcesses.Desc()
 	ch <- e.cleanupRejects.Desc()
 	ch <- e.cleanupNotAccepted.Desc()
@@ -664,7 +667,7 @@ func (e *PostfixExporter) foreverCollectFromJournal(ctx context.Context) {
 func (e *PostfixExporter) StartMetricCollection(ctx context.Context) {
 	if e.journal != nil {
 		e.foreverCollectFromJournal(ctx)
-	} else {
+	} else if e.tailer != nil {
 		e.CollectLogfileFromFile(ctx)
 	}
 
@@ -697,6 +700,9 @@ func (e *PostfixExporter) Collect(ch chan<- prometheus.Metric) {
 			e.showqPath)
 	}
 
+	if e.tailer == nil {
+		return
+	}
 	ch <- e.cleanupProcesses
 	ch <- e.cleanupRejects
 	ch <- e.cleanupNotAccepted
