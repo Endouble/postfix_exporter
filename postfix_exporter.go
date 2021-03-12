@@ -458,6 +458,7 @@ func NewPostfixExporter(showqPath string, logfilePath string, journal *Journal, 
 			return nil, err
 		}
 	}
+	timeBuckets := []float64{1e-3, 1e-2, 1e-1, 1.0, 10, 1 * 60, 1 * 60 * 60, 24 * 60 * 60, 2 * 24 * 60 * 60}
 	return &PostfixExporter{
 		logUnsupportedLines: logUnsupportedLines,
 		showqPath:           showqPath,
@@ -484,7 +485,7 @@ func NewPostfixExporter(showqPath string, logfilePath string, journal *Journal, 
 				Namespace: "postfix",
 				Name:      "lmtp_delivery_delay_seconds",
 				Help:      "LMTP message processing time in seconds.",
-				Buckets:   []float64{1e-3, 1e-2, 1e-1, 1e0, 1e1, 1e2, 1e3},
+				Buckets:   timeBuckets,
 			},
 			[]string{"stage"}),
 		pipeDelays: prometheus.NewHistogramVec(
@@ -492,7 +493,7 @@ func NewPostfixExporter(showqPath string, logfilePath string, journal *Journal, 
 				Namespace: "postfix",
 				Name:      "pipe_delivery_delay_seconds",
 				Help:      "Pipe message processing time in seconds.",
-				Buckets:   []float64{1e-3, 1e-2, 1e-1, 1e0, 1e1, 1e2, 1e3},
+				Buckets:   timeBuckets,
 			},
 			[]string{"relay", "stage"}),
 		qmgrInsertsNrcpt: prometheus.NewHistogram(prometheus.HistogramOpts{
@@ -517,7 +518,7 @@ func NewPostfixExporter(showqPath string, logfilePath string, journal *Journal, 
 				Namespace: "postfix",
 				Name:      "smtp_delivery_delay_seconds",
 				Help:      "SMTP message processing time in seconds.",
-				Buckets:   []float64{1e-3, 1e-2, 1e-1, 1e0, 1e1, 1e2, 1e3},
+				Buckets:   timeBuckets,
 			},
 			[]string{"stage"}),
 		smtpTLSConnects: prometheus.NewCounterVec(
@@ -612,7 +613,7 @@ func NewPostfixExporter(showqPath string, logfilePath string, journal *Journal, 
 func (e *PostfixExporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- postfixUpDesc
 
-	if e.tailer == nil {
+	if e.tailer == nil && e.journal == nil {
 		return
 	}
 	ch <- e.cleanupProcesses.Desc()
@@ -700,7 +701,7 @@ func (e *PostfixExporter) Collect(ch chan<- prometheus.Metric) {
 			e.showqPath)
 	}
 
-	if e.tailer == nil {
+	if e.tailer == nil && e.journal == nil {
 		return
 	}
 	ch <- e.cleanupProcesses
